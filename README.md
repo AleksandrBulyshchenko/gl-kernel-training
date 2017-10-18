@@ -1,3 +1,6 @@
+# gl-kernel-training
+Linux kernel general course by GlobalLogic Kharkiv, 2017
+
 # SandBox for Linux kernel drivers learning
 
 ## ssd1306
