@@ -20,13 +20,17 @@ export ARCH = arm
 export CROSS_COMPILE ?= arm-linux-gnueabihf-
 
 
-.PHONY: all clean
+.PHONY: all clean dtb
 
 all:
 	$(MAKE) -C $(KERNELDIR) M=$(CURDIR) modules
 
 clean:
 	$(MAKE) -C $(KERNELDIR) M=$(CURDIR) clean
+
+dtb:
+	cp am335x-bone-common.dtsi $(KERNELDIR)/arch/arm/boot/dts/
+	$(MAKE) -C $(KERNELDIR) M=$(CURDIR) dtbs
 
 
 endif

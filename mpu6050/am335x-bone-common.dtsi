@@ -245,6 +245,12 @@
 	status = "okay";
 	clock-frequency = <100000>;
 
+	gl_gyro: gl_gyro@68 {
+		compatible = "gl,mpu6050";
+		reg = <0x68>;
+		status = "okay";
+	};
+
 	cape_eeprom0: cape_eeprom0@54 {
 		compatible = "at,24c256";
 		reg = <0x54>;
