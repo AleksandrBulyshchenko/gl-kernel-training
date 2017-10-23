@@ -6,9 +6,9 @@
 #include <linux/version.h>
 #include <linux/init.h>
 
-
 #define LEN_MSG 160
-static char buf_msg[ LEN_MSG + 1 ] = "Hello from module!\n";
+//static char buf_msg[ LEN_MSG + 1 ] = "Hello from module!\n";
+static char* buf_msg;
 
 
 static ssize_t xxx_show( struct class *class, struct class_attribute *attr, char *buf ) {
@@ -30,6 +30,7 @@ static struct class *x_class;
 
 int __init x_init(void) {
    int res;
+   buf_msg = kmalloc(LEN_MSG+1,GFP_KERNEL | __GFP_ZERO);//include/linux/slab.h
    x_class = class_create( THIS_MODULE, "x-class" );
    if( IS_ERR( x_class ) ) printk( "bad class create\n" );
    res = class_create_file( x_class, &class_attr_xxx );
@@ -40,6 +41,7 @@ int __init x_init(void) {
 void x_cleanup(void) {
    class_remove_file( x_class, &class_attr_xxx );
    class_destroy( x_class );
+   kfree(buf_msg);
    return;
 }
 
