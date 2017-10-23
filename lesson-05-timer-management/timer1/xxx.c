@@ -6,6 +6,7 @@
 #include <linux/version.h>
 #include <linux/init.h>
 
+
 #define LEN_MSG 160
 static char buf_msg[ LEN_MSG + 1 ] = "Hello from module!\n";
 
