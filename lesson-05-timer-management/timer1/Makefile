@@ -4,7 +4,8 @@
 
 ifneq ($(KERNELRELEASE),)
 
-obj-m += xxx.o
+obj-m += xxx_last_read.o
+obj-m += xxx_absolute.o
 
 else
 
