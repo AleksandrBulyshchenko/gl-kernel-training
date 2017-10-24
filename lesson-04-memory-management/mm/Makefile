@@ -5,6 +5,7 @@
 ifneq ($(KERNELRELEASE),)
 
 obj-m += xxx.o
+obj-m += xxx_kmalloc.o
 
 else
 
