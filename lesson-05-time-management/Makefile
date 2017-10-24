@@ -4,7 +4,7 @@
 
 ifneq ($(KERNELRELEASE),)
 
-obj-m += xxx_km.o xxx_sa.o
+obj-m += usrmod.o
 
 else
 
