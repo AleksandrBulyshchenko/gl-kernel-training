@@ -51,7 +51,10 @@ static void* mem_alloc(int type, size_t size)
             buf = vmalloc(size);
             break;
     }
-    printk("[%s:%s] {%s} %lu bytes --> %p\n", THIS_MODULE->name, __FUNCTION__, get_mem_type(type), size, buf);
+
+    if (buf) buf_size = size;
+
+    printk("[%s:%s] {%s} %zu bytes --> %p\n", THIS_MODULE->name, __FUNCTION__, get_mem_type(type), size, buf);
     return buf;
 }
 
@@ -168,7 +171,8 @@ void mm_cleanup(void) {
  * 144 * same, but that's harder if the variable must be non-static or is inside a
  * 145 * structure.  This allows exposure under a different name.
  * 146 */
-module_param( mem_type, int, 1 );
+module_param( mem_type, int, 0444 );
+MODULE_PARM_DESC(mem_type, "Type of memory allocation: 0 - kmalloc; 1 - cache; 2 - vmalloc");
 
 module_init( mm_init );
 module_exit( mm_cleanup );
