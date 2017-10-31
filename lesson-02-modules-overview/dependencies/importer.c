@@ -6,15 +6,17 @@ MODULE_AUTHOR("Aleksandr Bulyshchenko <A.Bulyshchenko@globallogic.com>");
 MODULE_DESCRIPTION("Shared variable importer module");
 MODULE_VERSION("0.1");
 
-static int __init importer_init(void) {
-	printk("[%s]: Hello, I'm importing shared_data (0x%X)\n",
+static int __init importer_init(void)
+{
+	pr_info("[%s]: Hello, I'm importing shared_data (0x%X)\n",
 		THIS_MODULE->name, shared_data);
 	return 0;
 }
 
-static void __exit importer_exit(void) {
+static void __exit importer_exit(void)
+{
 	shared_data++;
-	printk("[%s]: Goodbye, shared_data is 0x%X now.\n",
+	pr_info("[%s]: Goodbye, shared_data is 0x%X now.\n",
 		THIS_MODULE->name, shared_data);
 }
 
