@@ -4,7 +4,7 @@
 
 ifneq ($(KERNELRELEASE),)
 
-obj-m += xxx.o
+obj-m += xxx_km.o xxx_sa.o
 
 else
 
