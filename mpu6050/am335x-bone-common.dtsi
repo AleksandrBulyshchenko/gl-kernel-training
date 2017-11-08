@@ -246,7 +246,7 @@
 	clock-frequency = <100000>;
 
 	gl_gyro: gl_gyro@68 {
-		compatible = "gl,mpu6050";
+        compatible = "gl_mpu6050";
 		reg = <0x68>;
 		status = "okay";
 	};

@@ -18,9 +18,9 @@ KERNELDIR ?= $(BBB_KERNEL)
 
 export ARCH = arm
 export CROSS_COMPILE ?= arm-linux-gnueabihf-
+KERNVER=$(shell $(MAKE) -C ${KERNELDIR} --no-print-directory kernelversion)
 
-
-.PHONY: all clean dtb
+.PHONY: all clean deploy_mod dtb deploy_dtb
 
 all:
 	$(MAKE) -C $(KERNELDIR) M=$(CURDIR) modules
@@ -32,5 +32,10 @@ dtb:
 	cp am335x-bone-common.dtsi $(KERNELDIR)/arch/arm/boot/dts/
 	$(MAKE) -C $(KERNELDIR) M=$(CURDIR) dtbs
 
+deploy_dtb: dtb #all
+	scp ${KERNELDIR}/arch/arm/boot/dts/am335x-boneblack*.dtb root@beaglebone.local:/boot/dtbs/${KERNVER}/
+
+deploy_mod: all
+	scp *.ko root@beaglebone.local:
 
 endif
