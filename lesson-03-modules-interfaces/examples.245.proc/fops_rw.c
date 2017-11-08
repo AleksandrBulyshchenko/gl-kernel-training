@@ -1,3 +1,5 @@
+#include <linux/compiler.h>
+
 static char *get_rw_buf( void ) {
    static char buf_msg[ LEN_MSG + 1 ] =
           ".........1.........2.........3.........4.........5\n";
@@ -24,7 +26,7 @@ static ssize_t node_read( struct file *file, char *buf,
 }
 
 // запись в /proc/mod_proc :
-static ssize_t node_write( struct file *file, const char *buf,
+static ssize_t __maybe_unused node_write( struct file *file, const char *buf,
                            size_t count, loff_t *ppos ) {
    char *buf_msg = get_rw_buf();
    int res;

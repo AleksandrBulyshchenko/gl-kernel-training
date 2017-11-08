@@ -42,9 +42,4 @@ err_node:
 static void __exit proc_exit( void ) {
    remove_proc_entry( NAME_NODE, NULL );
    LOG( "/proc/%s removed\n", NAME_NODE );
-
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 9, 0))
-   /* put it somewhere to avoid warnings */
-   (void)node_write;
-#endif
 }
