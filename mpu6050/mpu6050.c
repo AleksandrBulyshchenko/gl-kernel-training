@@ -90,6 +90,8 @@ static int mpu6050_probe(struct i2c_client *drv_client, const struct i2c_device_
 	i2c_smbus_write_byte_data(drv_client, REG_PWR_MGMT_1, 0);
 	i2c_smbus_write_byte_data(drv_client, REG_PWR_MGMT_2, 0);
 
+    g_mpu6050_data.drv_client = drv_client;
+
 	printk(KERN_INFO "mpu6050: i2c driver probed\n");
 	return 0;
 }
@@ -107,15 +109,16 @@ static int mpu6050_remove(struct i2c_client *drv_client)
 // ----------------------------------------------------------------------------------------
 
 static const struct i2c_device_id mpu6050_idtable [] = {
-	{ "gl_mpu6050", 0 },
+	{ "mpu6050", 0 },
 	{ }
 };
+MODULE_DEVICE_TABLE(i2c, mpu6050_idtable);
 // ----------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------
 
 static struct i2c_driver mpu6050_i2c_driver = {
 	.driver = {
-		.name = "gl_mpu6050",
+		.name = "mpu6050",
 	},
 
 	.probe = mpu6050_probe ,
@@ -169,7 +172,7 @@ static ssize_t mpu6050_gyro_y_show(struct class *class, struct class_attribute *
 {
 	mpu6050_read_data();
 
-	sprintf(buf, "%d\n", g_mpu6050_data.gyro_values[0]);
+	sprintf(buf, "%d\n", g_mpu6050_data.gyro_values[1]);
 	return strlen(buf);
 }
 // ----------------------------------------------------------------------------------------
@@ -179,7 +182,7 @@ static ssize_t mpu6050_gyro_z_show(struct class *class, struct class_attribute *
 {
 	mpu6050_read_data();
 
-	sprintf(buf, "%d\n", g_mpu6050_data.gyro_values[0]);
+	sprintf(buf, "%d\n", g_mpu6050_data.gyro_values[2]);
 	return strlen(buf);
 }
 // ----------------------------------------------------------------------------------------
