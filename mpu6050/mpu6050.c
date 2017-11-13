@@ -114,7 +114,7 @@ MODULE_DEVICE_TABLE(i2c, mpu6050_idtable);
 
 static struct i2c_driver mpu6050_i2c_driver = {
 	.driver = {
-		.name = "gl_mpu6050",
+		.name = "mpu6050",
 	},
 
 	.probe = mpu6050_probe,
@@ -290,7 +290,7 @@ static void mpu6050_exit(void)
 module_init(mpu6050_init);
 module_exit(mpu6050_exit);
 
-MODULE_AUTHOR("Andriy.Khulap <andriy.khulap@globallogic.com>");
+MODULE_AUTHOR("Maksym Glubokiy <m.glubokiy@gmail.com>");
 MODULE_DESCRIPTION("mpu6050 I2C acc&gyro");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("0.1");
+MODULE_VERSION("0.2");
