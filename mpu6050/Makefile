@@ -3,8 +3,8 @@
 #
 ifneq ($(KERNELRELEASE),)
 
-obj-m := mpu6050.o
-
+obj-m += mpu6050.o
+obj-m += mpu6050_dev.o
 else
 
 
