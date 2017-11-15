@@ -4,7 +4,7 @@
 
 ifneq ($(KERNELRELEASE),)
 
-obj-m += mm.o
+obj-m += tm.o
 
 else
 
