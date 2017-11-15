@@ -1,6 +1,6 @@
 CURRENT = $(shell uname -r)
-KDIR = /lib/modules/$(CURRENT)/build
-PWD = $(shell pwd)
+KDIR = $(BUILD_KERNEL)
+PWD = $(CURDIR)
 CC = gcc -Wall
 
 EXTRA_CFLAGS += -std=gnu99
