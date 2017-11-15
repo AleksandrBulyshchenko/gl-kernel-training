@@ -89,13 +89,6 @@ static int mpu6050_probe(struct i2c_client *drv_client, const struct i2c_device_
 
     g_mpu6050_data.drv_client = drv_client;
 
-    /*ret = sysfs_create_group(&drv_client->dev.kobj, &group_mpu6050);
-    if (IS_ERR_VALUE(ret)) {
-        printk(KERN_ERR "Can't create sysfs group: error %d\n", ret);
-        return ret;
-    } */         
-
-
 	printk(KERN_INFO "mpu6050: i2c driver probed\n");
 	return 0;
 }
@@ -105,7 +98,6 @@ static int mpu6050_probe(struct i2c_client *drv_client, const struct i2c_device_
 static int mpu6050_remove(struct i2c_client *drv_client)
 {
 	g_mpu6050_data.drv_client = 0;
-    //sysfs_remove_group(&drv_client->dev.kobj, &group_mpu6050);
 	printk(KERN_INFO "mpu6050: i2c driver removed\n");
 	return 0;
 }
@@ -131,89 +123,45 @@ static struct i2c_driver mpu6050_i2c_driver = {
 };
 // ----------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------
-static ssize_t mpu6050_accel_x_show(struct class *class, struct class_attribute *attr, char *buf)
+static ssize_t mpu6050_show(struct class *class, struct class_attribute *attr, char *buf)
 {
+	const char* name = attr->attr.name;
+
 	mpu6050_read_data();
 
-	sprintf(buf, "%d\n", g_mpu6050_data.accel_values[0]);
-	return strlen(buf);
-}
-// ----------------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------------------
-
-static ssize_t mpu6050_accel_y_show(struct class *class, struct class_attribute *attr, char *buf)
-{
-	mpu6050_read_data();
-
-	sprintf(buf, "%d\n", g_mpu6050_data.accel_values[1]);
-	return strlen(buf);
-}
-// ----------------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------------------
-
-static ssize_t mpu6050_accel_z_show(struct class *class, struct class_attribute *attr, char *buf)
-{
-	mpu6050_read_data();
-
-	sprintf(buf, "%d\n", g_mpu6050_data.accel_values[2]);
-	return strlen(buf);
-}
-// ----------------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------------------
-
-static ssize_t mpu6050_gyro_x_show(struct class *class, struct class_attribute *attr, char *buf)
-{
-	mpu6050_read_data();
-
-	sprintf(buf, "%d\n", g_mpu6050_data.gyro_values[0]);
-	return strlen(buf);
-}
-// ----------------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------------------
-
-static ssize_t mpu6050_gyro_y_show(struct class *class, struct class_attribute *attr, char *buf)
-{
-	mpu6050_read_data();
-
-	sprintf(buf, "%d\n", g_mpu6050_data.gyro_values[1]);
-	return strlen(buf);
-}
-// ----------------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------------------
-
-static ssize_t mpu6050_gyro_z_show(struct class *class, struct class_attribute *attr, char *buf)
-{
-	mpu6050_read_data();
-
-	sprintf(buf, "%d\n", g_mpu6050_data.gyro_values[2]);
-	return strlen(buf);
-}
-// ----------------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------------------
-
-static ssize_t mpu6050_temperature_show(struct class *class, struct class_attribute *attr, char *buf)
-{
-	mpu6050_read_data();
-
-	sprintf(buf, "%d\n", g_mpu6050_data.temperature);
-	return strlen(buf);
-}
-// ----------------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------------------
-
-static ssize_t mpu6050_all_show(struct class *class, struct class_attribute *attr, char *buf)
-{
-	mpu6050_read_data();
-
-    sprintf(buf, "accel: {%d, %d, %d}\ngyro: {%d, %d, %d}\ntemperature: %d\n", 
-            g_mpu6050_data.accel_values[0],
-            g_mpu6050_data.accel_values[1],
-            g_mpu6050_data.accel_values[2],
-            g_mpu6050_data.gyro_values[0],
-            g_mpu6050_data.gyro_values[1],
-            g_mpu6050_data.gyro_values[2],
-            g_mpu6050_data.temperature
-            );
+	printk("mpu6050_show:: attr.name:%s\n", name);
+	if (!strcmp(name, "all")) {
+	    sprintf(buf, "accel: {%d, %d, %d}\ngyro: {%d, %d, %d}\ntemperature: %d\n", 
+	            g_mpu6050_data.accel_values[0],
+	            g_mpu6050_data.accel_values[1],
+	            g_mpu6050_data.accel_values[2],
+	            g_mpu6050_data.gyro_values[0],
+	            g_mpu6050_data.gyro_values[1],
+	            g_mpu6050_data.gyro_values[2],
+	            g_mpu6050_data.temperature
+	            );
+	} else 
+	if (!strcmp(name, "temperature")) {
+		sprintf(buf, "%d\n", g_mpu6050_data.temperature);
+	} else 
+	if (!strcmp(name, "gyro_x")) {
+		sprintf(buf, "%d\n", g_mpu6050_data.gyro_values[0]);
+	} else 
+	if (!strcmp(name, "gyro_y")) {
+		sprintf(buf, "%d\n", g_mpu6050_data.gyro_values[1]);
+	} else 
+	if (!strcmp(name, "gyro_z")) {
+		sprintf(buf, "%d\n", g_mpu6050_data.gyro_values[2]);
+	} else 
+	if (!strcmp(name, "accel_x")) {
+		sprintf(buf, "%d\n", g_mpu6050_data.accel_values[0]);
+	} else 
+	if (!strcmp(name, "accel_y")) {
+		sprintf(buf, "%d\n", g_mpu6050_data.accel_values[1]);
+	} else 
+	if (!strcmp(name, "accel_z")) {
+		sprintf(buf, "%d\n", g_mpu6050_data.accel_values[2]);
+	}
 	return strlen(buf);
 }
 // ----------------------------------------------------------------------------------------
@@ -224,7 +172,7 @@ static ssize_t mpu6050_all_show(struct class *class, struct class_attribute *att
 		.name = __stringify(_data), 						\
 		.mode = S_IRUGO 									\
 	},														\
-	.show	= _name##_##_data##_show,						\
+	.show	= mpu6050_show,									\
 }
 
 #define CLASS_DATA_RO(name, data) \
@@ -254,13 +202,17 @@ CLASS_DATA_RO(mpu6050, all);
     static struct attribute_group group_##_name = { \
         .attrs =  attrs_##_name##_extra, \
     };
-//        .name  = __stringify(_name), \
 
 #define ATTR_GROUPS(name, attr_group) \
     static const struct attribute_group *groups_##name[] = {\
         &attr_group, \
         NULL \
     };
+
+#define ATTR_GET_GROUP(name) \
+	group_##name
+#define ATTR_GET_GROUPS(name) \
+	groups_##name
 
 ATTR_GROUP(mpu6050,
         ATTR_GROUP_EXTRA_GEN(CLASS_DATA_RO_ATTR(mpu6050, accel_x),
@@ -275,56 +227,11 @@ ATTR_GROUP(mpu6050,
         )))))))) 
     )
 
-ATTR_GROUPS(mpu6050, group_mpu6050)
-//ATTRIBUTE_GROUPS(group_mpu6050); 
+ATTR_GROUPS(mpu6050, ATTR_GET_GROUP(mpu6050))
 
-// ----------------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------------------
-/*static void my_class_create_release(struct class *cls)                                                           
-{
-    pr_debug("%s called for %s\n", __func__, cls->name);
-    kfree(cls);
-}
-// ----------------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------------------
-/*struct class *my_class_create(struct module *owner, const char *name)
-{
-    static struct lock_class_key key;
-    struct class *cls;
-    int retval;
-    cls = kzalloc(sizeof(*cls), GFP_KERNEL);
-    if (!cls) {
-        retval = -ENOMEM;
-        goto error;
-    }
-    cls->name = name;
-    cls->owner = owner;
-    cls->class_release = my_class_create_release;
-    cls->class_groups = groups_mpu6050; 
-    retval = __class_register(cls, key);
-    if (retval)
-        goto error;
-    return cls;
-error:
-    kfree(cls);
-    return ERR_PTR(retval);
-    //__class_create(owner, name, &__key);
-}
-#define MY_CREATE_CLASS(name, goto_err) \
-    ({ \
-        name##_class = class_create( THIS_MODULE, #name ); \
-        if( IS_ERR( name##_class ) ) { \
-            int res = 0; \
-            res = PTR_ERR(name##_class); \
-            printk(KERN_ERR "Bad class create "#name"\n" ); \
-            goto goto_err; \
-        } \
-        res; \
-    })
-    */
 struct class mpu6050_class = {
-	.name         = "mpu6050_class",
-	.class_groups = groups_mpu6050,
+	.name         = "mpu6050",
+	.class_groups = ATTR_GET_GROUPS(mpu6050),
 	.owner        = THIS_MODULE,
 };
 
@@ -342,7 +249,6 @@ static int mpu6050_init(void)
 	}
 	printk(KERN_INFO "mpu6050: i2c driver created\n");
 
-    //MY_CREATE_CLASS(mpu6050, create_class_err);
 	res = class_register(&mpu6050_class);
 	if (res) {
 		pr_err("Unable to register mpu6050_class class\n");
@@ -355,8 +261,6 @@ static int mpu6050_init(void)
 
     return res;
 create_class_err:
-    //REMOVE_CLASS(mpu6050);
-	//class_unregister(&mpu6050_class);
     i2c_del_driver(&mpu6050_i2c_driver);     
     return res;
 }
@@ -367,7 +271,6 @@ static void mpu6050_exit(void)
 {
 	/*if (mpu6050_class)*/ {
 		printk(KERN_INFO "mpu6050: sysfs class attributes removed\n");
-        //REMOVE_CLASS(mpu6050);
         class_unregister(&mpu6050_class);
 		printk(KERN_INFO "mpu6050: sysfs class destroyed\n");
 	}
