@@ -1,0 +1,1 @@
+cmd_/home/andrii/sandbox/sandbox/ssd1306/ssd1306.ko := /home/andrii/BBB/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-ld -EL -r  -T ./scripts/module-common.lds --build-id  -T ./arch/arm/kernel/module.lds -o /home/andrii/sandbox/sandbox/ssd1306/ssd1306.ko /home/andrii/sandbox/sandbox/ssd1306/ssd1306.o /home/andrii/sandbox/sandbox/ssd1306/ssd1306.mod.o
