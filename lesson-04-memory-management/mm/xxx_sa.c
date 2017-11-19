@@ -5,10 +5,13 @@
 #include <linux/pci.h>
 #include <linux/version.h>
 #include <linux/init.h>
+#include <linux/slab.h>
 
 #define LEN_MSG 160
-static char buf_msg[ LEN_MSG + 1 ] = "Hello from module!\n";
+static char *buf_msg;
+static const char init_buf_msg[] = "Hello from module!\n";
 
+struct kmem_cache* user_cache = NULL;
 
 static ssize_t xxx_show( struct class *class, struct class_attribute *attr, char *buf ) {
    strcpy( buf, buf_msg );
@@ -32,6 +35,17 @@ int __init x_init(void) {
    x_class = class_create( THIS_MODULE, "x-class" );
    if( IS_ERR( x_class ) ) printk( "bad class create\n" );
    res = class_create_file( x_class, &class_attr_xxx );
+
+   user_cache = kmem_cache_create("user_cache", LEN_MSG, 0, 0, NULL); 
+
+   if(user_cache == NULL)
+   {
+   	   return -ENOMEM;
+   }
+
+   buf_msg = (char*) kmem_cache_alloc(user_cache, 0);
+   strcpy(buf_msg, init_buf_msg);
+
    printk( "'xxx' module initialized\n" );
    return res;
 }
@@ -39,6 +53,8 @@ int __init x_init(void) {
 void x_cleanup(void) {
    class_remove_file( x_class, &class_attr_xxx );
    class_destroy( x_class );
+   kmem_cache_free(user_cache, buf_msg);
+   kmem_cache_destroy(user_cache);
    return;
 }
 
