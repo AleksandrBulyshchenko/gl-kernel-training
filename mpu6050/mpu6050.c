@@ -190,16 +190,21 @@ void timu_upd_tmr_handler(unsigned long data)
 	if (jiffies_to_msecs(jiffies)-g_mpu6050_data.ts_ms > 100) {
 		mpu6050_update(&g_mpu6050_data);
 	}
+	
+	if (g_mpu6050_data.drv_client != 0) {
 
-	for (; i < 3; i++) {
-		printk("here\n");
-		s.acc_mg[i] = (s32)(g_mpu6050_data.acc_raw[i])*1000/g_mpu6050_data.acc_scale;
-		s.gyr_dgps[i] = g_mpu6050_data.gyr_raw[i]/g_mpu6050_data.gyr_scale;
+		for (; i < 3; i++) {
+			s.acc_mg[i] = (s32)(g_mpu6050_data.acc_raw[i])*1000/g_mpu6050_data.acc_scale;
+			s.gyr_dgps[i] = g_mpu6050_data.gyr_raw[i]/g_mpu6050_data.gyr_scale;
+		}
+		s.ts_ms = g_mpu6050_data.ts_ms;
+
+		imu_buff_wr(&s);
 	}
-	s.ts_ms = g_mpu6050_data.ts_ms;
-
-	imu_buff_wr(&s);
-
+	else
+	{
+		printk("mpu6050: timer: device isn't ready");
+	}
 	/*if (mod_timer(&imu_upd_tmr, jiffies + msecs_to_jiffies(1000))) {
 		printk("mpu6050: Timer starting fault/n");
 	}*/
