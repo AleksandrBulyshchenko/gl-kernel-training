@@ -4,6 +4,8 @@
 #include <linux/err.h>
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
+#include <linux/timekeeping.h>
+#include <linux/miscdevice.h>
 
 #include "mpu6050-regs.h"
 
@@ -14,56 +16,94 @@ enum {
 	Z = 2
 };
 
+#define SAMPLES_COUNT (10)
+
 struct mpu6050_data {
-	struct i2c_client *drv_client;
 	int accel_values[3];
 	int gyro_values[3];
 	int temperature;
+	unsigned long timestamp;
 };
 
-static struct mpu6050_data mpu6050_data;
+static struct i2c_client *mpu6050_drv_client;
+struct mpu6050_data mpu6050_data_samples[SAMPLES_COUNT];
+static int mpu6050_current_sample_idx;
+static unsigned long mpu6050_last_access_time;
 
-static int mpu6050_read_data(void)
+static int mpu6050_read_data(struct i2c_client *drv_client, struct mpu6050_data *data)
 {
 	int temp;
-	struct i2c_client *drv_client = mpu6050_data.drv_client;
+
+	BUG_ON(NULL == data);
 
 	if (drv_client == 0)
 		return -ENODEV;
 
+	data->timestamp = get_seconds();
+
 	/* accel */
-	mpu6050_data.accel_values[X] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_ACCEL_XOUT_H));
-	mpu6050_data.accel_values[Y] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_ACCEL_YOUT_H));
-	mpu6050_data.accel_values[Z] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_ACCEL_ZOUT_H));
+	data->accel_values[X] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_ACCEL_XOUT_H));
+	data->accel_values[Y] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_ACCEL_YOUT_H));
+	data->accel_values[Z] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_ACCEL_ZOUT_H));
 	/* gyro */
-	mpu6050_data.gyro_values[X] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_GYRO_XOUT_H));
-	mpu6050_data.gyro_values[Y] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_GYRO_YOUT_H));
-	mpu6050_data.gyro_values[Z] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_GYRO_ZOUT_H));
+	data->gyro_values[X] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_GYRO_XOUT_H));
+	data->gyro_values[Y] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_GYRO_YOUT_H));
+	data->gyro_values[Z] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_GYRO_ZOUT_H));
 	/* Temperature in degrees C =
 	 * (TEMP_OUT Register Value  as a signed quantity)/340 + 36.53
 	 */
 	temp = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_TEMP_OUT_H));
-	mpu6050_data.temperature = (temp + 12420 + 170) / 340;
+	data->temperature = (temp + 12420 + 170) / 340;
 
 	dev_info(&drv_client->dev, "sensor data read:\n");
 	dev_info(&drv_client->dev, "ACCEL[X,Y,Z] = [%d, %d, %d]\n",
-		mpu6050_data.accel_values[X],
-		mpu6050_data.accel_values[Y],
-		mpu6050_data.accel_values[Z]);
+		data->accel_values[X],
+		data->accel_values[Y],
+		data->accel_values[Z]);
 	dev_info(&drv_client->dev, "GYRO[X,Y,Z] = [%d, %d, %d]\n",
-		mpu6050_data.gyro_values[X],
-		mpu6050_data.gyro_values[Y],
-		mpu6050_data.gyro_values[Z]);
+		data->gyro_values[X],
+		data->gyro_values[Y],
+		data->gyro_values[Z]);
 	dev_info(&drv_client->dev, "TEMP = %d\n",
-		mpu6050_data.temperature);
+		data->temperature);
 
 	return 0;
+}
+
+static int sample_store_allowed(void)
+{
+	return (get_seconds() > mpu6050_last_access_time);
+}
+
+static int sample_get_next_idx(int current_idx)
+{
+	int idx = current_idx;
+
+	idx++;
+	if (idx == SAMPLES_COUNT)
+		idx = 0;
+
+	return idx;
+}
+
+static void sample_store(struct mpu6050_data *data)
+{
+	int idx;
+
+	BUG_ON(NULL == data);
+
+	idx = sample_get_next_idx(mpu6050_current_sample_idx);
+	pr_info("mpu6050: storing data sample at %d, sample timestamp: %lu\n", idx, data->timestamp);
+	mpu6050_data_samples[idx] = *data;
+	mpu6050_current_sample_idx = idx;
+	mpu6050_last_access_time = get_seconds();
 }
 
 static int mpu6050_probe(struct i2c_client *drv_client,
 			 const struct i2c_device_id *id)
 {
 	int ret;
+	struct mpu6050_data data;
 
 	dev_info(&drv_client->dev,
 		"i2c client address is 0x%X\n", drv_client->addr);
@@ -98,15 +138,20 @@ static int mpu6050_probe(struct i2c_client *drv_client,
 	i2c_smbus_write_byte_data(drv_client, REG_PWR_MGMT_1, 0);
 	i2c_smbus_write_byte_data(drv_client, REG_PWR_MGMT_2, 0);
 
-	mpu6050_data.drv_client = drv_client;
+	mpu6050_drv_client = drv_client;
+	mpu6050_last_access_time = get_seconds();
 
+	ret = mpu6050_read_data(mpu6050_drv_client, &data);
+	if (IS_ERR_VALUE(ret)) {
+		sample_store(&data);
+	}
 	dev_info(&drv_client->dev, "i2c driver probed\n");
 	return 0;
 }
 
 static int mpu6050_remove(struct i2c_client *drv_client)
 {
-	mpu6050_data.drv_client = 0;
+	mpu6050_drv_client = NULL;
 
 	dev_info(&drv_client->dev, "i2c driver removed\n");
 	return 0;
@@ -130,29 +175,39 @@ static struct i2c_driver mpu6050_i2c_driver = {
 
 struct class_ext_attribute {
 	struct class_attribute attr;
-	void *var;
+	off_t var_offset;
 };
 
 static ssize_t mpu6050_show(struct class *class, struct class_attribute *attr, char *buf)
 {
 	struct class_ext_attribute *a = container_of(attr, struct class_ext_attribute, attr);
-	int *v = a->var;
+	struct mpu6050_data data;
+	int *v = (int *)((char *)&data + a->var_offset);
+	int ret;
 
-	mpu6050_read_data();
+	/* we always want to show actual data in sysfs so read it directly from device */
+	ret = mpu6050_read_data(mpu6050_drv_client, &data);
+	if (IS_ERR_VALUE(ret)) {
+		pr_err("mpu6050: failed to get data: %d\n", ret);
+		return ret;
+	}
+	if (sample_store_allowed()) {
+		sample_store(&data);
+	}
 	return scnprintf(buf, PAGE_SIZE, "%d", *v);
 }
 
-#define MPU6050_ATTR(_name, _mode, _var) \
-  struct class_ext_attribute mpu6050_class_attr_##_name = \
-  { __ATTR(_name, _mode, mpu6050_show, NULL), _var }
+#define MPU6050_ATTR(_name, _mode, _var_offset) \
+	struct class_ext_attribute mpu6050_class_attr_##_name = \
+	{ __ATTR(_name, _mode, mpu6050_show, NULL), _var_offset }
 
-MPU6050_ATTR(temperature, 0444, &mpu6050_data.temperature);
-MPU6050_ATTR(gyro_x, 0444, &mpu6050_data.gyro_values[X]);
-MPU6050_ATTR(gyro_y, 0444, &mpu6050_data.gyro_values[Y]);
-MPU6050_ATTR(gyro_z, 0444, &mpu6050_data.gyro_values[Z]);
-MPU6050_ATTR(accel_x, 0444, &mpu6050_data.accel_values[X]);
-MPU6050_ATTR(accel_y, 0444, &mpu6050_data.accel_values[Y]);
-MPU6050_ATTR(accel_z, 0444, &mpu6050_data.accel_values[Z]);
+MPU6050_ATTR(temperature, 0444, offsetof(struct mpu6050_data, temperature));
+MPU6050_ATTR(gyro_x,      0444, offsetof(struct mpu6050_data, gyro_values[X]));
+MPU6050_ATTR(gyro_y,      0444, offsetof(struct mpu6050_data, gyro_values[Y]));
+MPU6050_ATTR(gyro_z,      0444, offsetof(struct mpu6050_data, gyro_values[Z]));
+MPU6050_ATTR(accel_x,     0444, offsetof(struct mpu6050_data, accel_values[X]));
+MPU6050_ATTR(accel_y,     0444, offsetof(struct mpu6050_data, accel_values[Y]));
+MPU6050_ATTR(accel_z,     0444, offsetof(struct mpu6050_data, accel_values[Z]));
 
 static struct class_attribute *g_mpu6050_class_attrs[] = {
 	&mpu6050_class_attr_gyro_x.attr,
@@ -164,6 +219,8 @@ static struct class_attribute *g_mpu6050_class_attrs[] = {
 	&mpu6050_class_attr_temperature.attr,
 	NULL
 };
+
+static struct class *mpu6050_class;
 
 /*
  * class_* interface as of v4.9 does not provide
@@ -193,7 +250,91 @@ static void class_remove_group(struct class *class, struct class_attribute **att
 		class_remove_file(class, *attrs);
 }
 
-static struct class *mpu6050_class;
+/*
+ * time: gyro=gyroX:gyroY:gyroZ acc=accX:accY:accY
+ */
+static void mpu6050_seq_print_one(struct seq_file *seq, struct mpu6050_data *data)
+{
+	seq_printf(seq, "time: %lu gyro:%hd:%hd:%hd acc=%hd:%hd:%hd\n",
+			data->timestamp,
+			data->gyro_values[X],
+			data->gyro_values[Y],
+			data->gyro_values[Z],
+			data->accel_values[X],
+			data->accel_values[Y],
+			data->accel_values[Z]);
+}
+
+static int mpu6050_current_seq_show(struct seq_file *seq, void *d)
+{
+	int idx = (int)seq->private;
+	struct mpu6050_data *data = &mpu6050_data_samples[idx];
+
+	mpu6050_seq_print_one(seq, data);
+	return 0;
+}
+
+static int mpu6050_all_seq_show(struct seq_file *seq, void *d)
+{
+	int i;
+
+	for (i = 0; i < SAMPLES_COUNT; i++) {
+		struct mpu6050_data *data = &mpu6050_data_samples[i];
+		mpu6050_seq_print_one(seq, data);
+	}
+
+	return 0;
+}
+
+static void mpu6050_common_open(void)
+{
+	struct mpu6050_data data;
+
+	if (sample_store_allowed()) {
+		mpu6050_read_data(mpu6050_drv_client, &data);
+		sample_store(&data);
+	}
+}
+
+static int mpu6050_current_open(struct inode *inode, struct file *file)
+{
+	mpu6050_common_open();
+	return single_open(file, mpu6050_current_seq_show, (void*)mpu6050_current_sample_idx);
+}
+
+static int mpu6050_all_open(struct inode *inode, struct file *file)
+{
+	mpu6050_common_open();
+	return single_open(file, mpu6050_all_seq_show, NULL);
+}
+
+static const struct file_operations mpu6050_current_fops = {
+	.owner = THIS_MODULE,
+	.open = mpu6050_current_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+static const struct file_operations mpu6050_all_fops = {
+	.owner = THIS_MODULE,
+	.open = mpu6050_all_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+static struct miscdevice mpu6050_current_dev = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.fops = &mpu6050_current_fops,
+	.name = "mpu6050_current",
+};
+
+static struct miscdevice mpu6050_all_dev = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.fops = &mpu6050_all_fops,
+	.name = "mpu6050_all",
+};
 
 static int mpu6050_init(void)
 {
@@ -223,8 +364,28 @@ static int mpu6050_init(void)
 	}
 	pr_info("mpu6050: sysfs class attributes created\n");
 
+	ret = misc_register(&mpu6050_current_dev);
+	if (IS_ERR_VALUE(ret)) {
+		pr_err("mpu6050: failed to create 'current' chardev: %d\n", ret);
+		goto device_current_fail;
+	}
+	pr_info("mpu6050: mpu6050 'current' chardev created\n");
+
+	ret = misc_register(&mpu6050_all_dev);
+	if (IS_ERR_VALUE(ret)) {
+		pr_err("mpu6050: failed to create 'all' chardev: %d\n", ret);
+		goto device_all_fail;
+	}
+	pr_info("mpu6050: mpu6050 'all' chardev created\n");
+
 	pr_info("mpu6050: module loaded\n");
 	return 0;
+
+device_all_fail:
+	misc_deregister(&mpu6050_current_dev);
+
+device_current_fail:
+	class_remove_group(mpu6050_class, g_mpu6050_class_attrs);
 
 group_fail:
 	class_destroy(mpu6050_class);
@@ -239,12 +400,14 @@ driver_fail:
 
 static void mpu6050_exit(void)
 {
+	misc_deregister(&mpu6050_all_dev);
+	misc_deregister(&mpu6050_current_dev);
+	i2c_del_driver(&mpu6050_i2c_driver);
+	pr_info("mpu6050: i2c driver deleted\n");
+
 	class_remove_group(mpu6050_class, g_mpu6050_class_attrs);
 	class_destroy(mpu6050_class);
 	pr_info("mpu6050: sysfs class attributes removed\n");
-
-	i2c_del_driver(&mpu6050_i2c_driver);
-	pr_info("mpu6050: i2c driver deleted\n");
 
 	pr_info("mpu6050: module exited\n");
 }
