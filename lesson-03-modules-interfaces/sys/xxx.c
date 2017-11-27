@@ -29,7 +29,7 @@ struct class_attribute {
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,32)
 static ssize_t xxx_show( struct class *class, struct class_attribute *attr, char *buf ) {
 #else
-static ssize_t x_show( struct class *class, char *buf ) {
+static ssize_t xxx_show( struct class *class, char *buf ) {
 #endif
    strcpy( buf, buf_msg );
    printk( "read %ld\n", (long)strlen( buf ) );
@@ -40,7 +40,7 @@ static ssize_t x_show( struct class *class, char *buf ) {
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,32)
 static ssize_t xxx_store( struct class *class, struct class_attribute *attr, const char *buf, size_t count ) {
 #else
-static ssize_t x_store( struct class *class, const char *buf, size_t count ) {
+static ssize_t xxx_store( struct class *class, const char *buf, size_t count ) {
 #endif
    printk( "write %ld\n", (long)count );
    strncpy( buf_msg, buf, count );
@@ -62,7 +62,7 @@ int __init x_init(void) {
    res = class_create_file( x_class, &class_attr_xxx );
 /* <linux/device.h>
 extern int __must_check class_create_file(struct class *class, const struct class_attribute *attr); */
-   printk( "'xxx' module initialized\n" );
+   printk( "'xxx' module initialized %d\n", res );
    return res;
 }
 
