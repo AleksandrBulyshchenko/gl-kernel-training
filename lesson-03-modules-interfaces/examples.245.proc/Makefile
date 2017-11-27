@@ -1,5 +1,4 @@
-CURRENT = $(shell uname -r)
-KDIR = /lib/modules/$(CURRENT)/build
+KDIR = ${BUILD_KERNEL}
 PWD = $(shell pwd)
 CC = gcc -Wall
 
@@ -17,6 +16,9 @@ all: default mcat clean
 
 default:
 	$(MAKE) -C $(KDIR) M=$(PWD) modules
+
+mcat:  common.h mcat.c
+	gcc -m32 -static -I$(KDIR) mcat.c -o mcat
 
 clean:
 	@rm -f *.o .*.cmd .*.flags *.mod.c *.order
