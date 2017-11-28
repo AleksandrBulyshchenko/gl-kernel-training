@@ -15,41 +15,41 @@ struct mpu6050_data {
 	int temperature;
 };
 
-static struct mpu6050_data g_mpu6050_data;
+static struct mpu6050_data mpu6050_data;
 
 static int mpu6050_read_data(void)
 {
 	int temp;
-	struct i2c_client *drv_client = g_mpu6050_data.drv_client;
+	struct i2c_client *drv_client = mpu6050_data.drv_client;
 
 	if (drv_client == 0)
 		return -ENODEV;
 
 	/* accel */
-	g_mpu6050_data.accel_values[0] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_ACCEL_XOUT_H));
-	g_mpu6050_data.accel_values[1] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_ACCEL_YOUT_H));
-	g_mpu6050_data.accel_values[2] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_ACCEL_ZOUT_H));
+	mpu6050_data.accel_values[0] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_ACCEL_XOUT_H));
+	mpu6050_data.accel_values[1] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_ACCEL_YOUT_H));
+	mpu6050_data.accel_values[2] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_ACCEL_ZOUT_H));
 	/* gyro */
-	g_mpu6050_data.gyro_values[0] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_GYRO_XOUT_H));
-	g_mpu6050_data.gyro_values[1] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_GYRO_YOUT_H));
-	g_mpu6050_data.gyro_values[2] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_GYRO_ZOUT_H));
+	mpu6050_data.gyro_values[0] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_GYRO_XOUT_H));
+	mpu6050_data.gyro_values[1] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_GYRO_YOUT_H));
+	mpu6050_data.gyro_values[2] = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_GYRO_ZOUT_H));
 	/* Temperature in degrees C =
 	 * (TEMP_OUT Register Value  as a signed quantity)/340 + 36.53
 	 */
 	temp = (s16)((u16)i2c_smbus_read_word_swapped(drv_client, REG_TEMP_OUT_H));
-	g_mpu6050_data.temperature = (temp + 12420 + 170) / 340;
+	mpu6050_data.temperature = (temp + 12420 + 170) / 340;
 
 	dev_info(&drv_client->dev, "sensor data read:\n");
 	dev_info(&drv_client->dev, "ACCEL[X,Y,Z] = [%d, %d, %d]\n",
-		g_mpu6050_data.accel_values[0],
-		g_mpu6050_data.accel_values[1],
-		g_mpu6050_data.accel_values[2]);
+		mpu6050_data.accel_values[0],
+		mpu6050_data.accel_values[1],
+		mpu6050_data.accel_values[2]);
 	dev_info(&drv_client->dev, "GYRO[X,Y,Z] = [%d, %d, %d]\n",
-		g_mpu6050_data.gyro_values[0],
-		g_mpu6050_data.gyro_values[1],
-		g_mpu6050_data.gyro_values[2]);
+		mpu6050_data.gyro_values[0],
+		mpu6050_data.gyro_values[1],
+		mpu6050_data.gyro_values[2]);
 	dev_info(&drv_client->dev, "TEMP = %d\n",
-		g_mpu6050_data.temperature);
+		mpu6050_data.temperature);
 
 	return 0;
 }
@@ -92,7 +92,7 @@ static int mpu6050_probe(struct i2c_client *drv_client,
 	i2c_smbus_write_byte_data(drv_client, REG_PWR_MGMT_1, 0);
 	i2c_smbus_write_byte_data(drv_client, REG_PWR_MGMT_2, 0);
 
-	g_mpu6050_data.drv_client = drv_client;
+	mpu6050_data.drv_client = drv_client;
 
 	dev_info(&drv_client->dev, "i2c driver probed\n");
 	return 0;
@@ -100,7 +100,7 @@ static int mpu6050_probe(struct i2c_client *drv_client,
 
 static int mpu6050_remove(struct i2c_client *drv_client)
 {
-	g_mpu6050_data.drv_client = 0;
+	mpu6050_data.drv_client = 0;
 
 	dev_info(&drv_client->dev, "i2c driver removed\n");
 	return 0;
@@ -127,7 +127,7 @@ static ssize_t accel_x_show(struct class *class,
 {
 	mpu6050_read_data();
 
-	sprintf(buf, "%d\n", g_mpu6050_data.accel_values[0]);
+	sprintf(buf, "%d\n", mpu6050_data.accel_values[0]);
 	return strlen(buf);
 }
 
@@ -136,7 +136,7 @@ static ssize_t accel_y_show(struct class *class,
 {
 	mpu6050_read_data();
 
-	sprintf(buf, "%d\n", g_mpu6050_data.accel_values[1]);
+	sprintf(buf, "%d\n", mpu6050_data.accel_values[1]);
 	return strlen(buf);
 }
 
@@ -145,7 +145,7 @@ static ssize_t accel_z_show(struct class *class,
 {
 	mpu6050_read_data();
 
-	sprintf(buf, "%d\n", g_mpu6050_data.accel_values[2]);
+	sprintf(buf, "%d\n", mpu6050_data.accel_values[2]);
 	return strlen(buf);
 }
 
@@ -154,7 +154,7 @@ static ssize_t gyro_x_show(struct class *class,
 {
 	mpu6050_read_data();
 
-	sprintf(buf, "%d\n", g_mpu6050_data.gyro_values[0]);
+	sprintf(buf, "%d\n", mpu6050_data.gyro_values[0]);
 	return strlen(buf);
 }
 
@@ -163,7 +163,7 @@ static ssize_t gyro_y_show(struct class *class,
 {
 	mpu6050_read_data();
 
-	sprintf(buf, "%d\n", g_mpu6050_data.gyro_values[1]);
+	sprintf(buf, "%d\n", mpu6050_data.gyro_values[1]);
 	return strlen(buf);
 }
 
@@ -172,7 +172,7 @@ static ssize_t gyro_z_show(struct class *class,
 {
 	mpu6050_read_data();
 
-	sprintf(buf, "%d\n", g_mpu6050_data.gyro_values[2]);
+	sprintf(buf, "%d\n", mpu6050_data.gyro_values[2]);
 	return strlen(buf);
 }
 
@@ -181,7 +181,7 @@ static ssize_t temp_show(struct class *class,
 {
 	mpu6050_read_data();
 
-	sprintf(buf, "%d\n", g_mpu6050_data.temperature);
+	sprintf(buf, "%d\n", mpu6050_data.temperature);
 	return strlen(buf);
 }
 
