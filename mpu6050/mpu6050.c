@@ -5,6 +5,13 @@
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 
+#include <linux/time.h>
+#include <linux/time64.h>
+#include <linux/timekeeping.h>
+#include <linux/timer.h>
+#include <linux/delay.h>
+#include <linux/kthread.h>
+
 #include "mpu6050-regs.h"
 
 enum AXES {
@@ -21,9 +28,12 @@ enum VALUE_TYPE {
 };
 
 #define READ_REG_NUM (AXES_NUM * 2 + 1)
+#define READ_DEPTH 10
 
 struct mpu6050_data {
 	struct i2c_client *drv_client;
+	int head;
+	int tail;
 	union {
 		struct {
 			int accel[AXES_NUM];
@@ -31,21 +41,56 @@ struct mpu6050_data {
 			int gyro [AXES_NUM];
 		} values;
 		int raw[READ_REG_NUM];
-	} data;
+	} data[READ_DEPTH];
 };
 
-static struct mpu6050_data g_mpu6050_data;
+static const struct i2c_device_id mpu6050_idtable[] = {
+	{ "mpu6050", 0 },
+	{ }
+};
+
 
 static ssize_t show_item(struct class *class, struct class_attribute *attr, char *buf);
+
+
+static struct mpu6050_data g_mpu6050_data;
+struct task_struct *hthr;
+
+MODULE_DEVICE_TABLE(i2c, mpu6050_idtable);
+
+static struct class *attr_class;
+
+static int rate = 1000;
+static int is_buf;
+
+module_param( rate, int, S_IRUGO );
+module_param( is_buf, int, S_IRUGO );
+
+static inline int get_next_pos (int pos, const int depth)
+{
+	int tmp = pos + 1;
+	if (tmp >= depth) {
+		tmp -= depth;
+	}
+	return tmp;
+}
+
+static void mpu6050_data_flush(void)
+{
+	g_mpu6050_data.head = 0;
+	g_mpu6050_data.tail = 0;
+}
 
 static int mpu6050_read_data(void)
 {
 	u8 values[READ_REG_NUM * sizeof(u16)];
-	int temp, result, i, *p;
+	int temp, result, i, head, *p;
 	struct i2c_client *drv_client = g_mpu6050_data.drv_client;
 
 	if (drv_client == 0)
 		return -ENODEV;
+
+
 
 	result = i2c_smbus_read_i2c_block_data(drv_client, REG_ACCEL_XOUT_H,
 			READ_REG_NUM * sizeof(u16), (char*) values);
@@ -55,8 +100,12 @@ static int mpu6050_read_data(void)
 		return -EINVAL;
 	}
 
-	for (i = 0, p = g_mpu6050_data.data.raw; i < READ_REG_NUM * sizeof(u16); i += 2, ++p)
+	head = get_next_pos(g_mpu6050_data.head, READ_DEPTH);
+
+	for (i = 0, p = g_mpu6050_data.data[head].raw; i < READ_REG_NUM * sizeof(u16); i += 2, ++p)
 		*p = (s16) ((u16) values[i] << 8 | (u16)values[i + 1]);
+
+	g_mpu6050_data.head = head;
 
 	/* Temperature in degrees C =
 	 * (TEMP_OUT Register Value  as a signed quantity)/340 + 36.53
@@ -80,6 +129,28 @@ static int mpu6050_read_data(void)
 			g_mpu6050_data.data.values.temperature);
 
 	return 0;
+}
+
+static int mpu6050_get_data(int *values, int is_buffered)
+{
+	if (is_buffered) {
+		int tail = g_mpu6050_data.tail;
+
+		if (tail == g_mpu6050_data.head)
+			return 0;
+
+		memcpy(values, g_mpu6050_data.data[tail].raw, sizeof(int) * READ_REG_NUM);
+		g_mpu6050_data.tail = get_next_pos(tail, READ_DEPTH);
+	}
+	else {
+		memcpy(values, g_mpu6050_data.data[g_mpu6050_data.head].raw, sizeof(int) * READ_REG_NUM);
+	}
+	return 1;
+}
+
+static void update_values(struct work_struct *unused)
+{
+	mpu6050_read_data();
 }
 
 static int mpu6050_probe(struct i2c_client *drv_client,
@@ -134,11 +205,6 @@ static int mpu6050_remove(struct i2c_client *drv_client)
 	return 0;
 }
 
-static const struct i2c_device_id mpu6050_idtable[] = {
-	{ "mpu6050", 0 },
-	{ }
-};
-MODULE_DEVICE_TABLE(i2c, mpu6050_idtable);
 
 static struct i2c_driver mpu6050_i2c_driver = {
 	.driver = {
@@ -165,19 +231,29 @@ struct class_attribute class_attr_array[READ_REG_NUM] = {
 static ssize_t show_item(struct class *class, struct class_attribute *attr, char *buf)
 {
 	int index = attr - class_attr_array;
+	int data[READ_REG_NUM] = {0};
 	int value = 0;
 
-	mpu6050_read_data();
+	mpu6050_get_data( data, is_buf);
 
 	if (index >=0 && index < READ_REG_NUM) {
-		value = g_mpu6050_data.data.raw[index];
+		value = data[index];
 	}
 
 	sprintf(buf, "%d\n", value);
 	return strlen(buf);
 }
 
-static struct class *attr_class;
+static int mpu6050_get_data_thread( void* data )
+{
+	pr_info("read data thread started\n");
+	do {
+		mpu6050_read_data();
+		msleep(rate);
+	} while(!kthread_should_stop());
+	pr_info("exit from thread\n");
+	return 0;
+}
 
 static int mpu6050_init(void)
 {
@@ -190,6 +266,7 @@ static int mpu6050_init(void)
 		return ret;
 	}
 	pr_info("mpu6050: i2c driver created\n");
+	mpu6050_data_flush();
 
 	/* Create class */
 	attr_class = class_create(THIS_MODULE, "mpu6050");
@@ -209,6 +286,8 @@ static int mpu6050_init(void)
 	}
 
 	pr_info("mpu6050: sysfs class attributes created\n");
+	hthr = kthread_run(mpu6050_get_data_thread, NULL, "mpu6050_thread");
+	pr_info("mpu6050: read thread %p started\n", hthr);
 
 	pr_info("mpu6050: module loaded\n");
 	return 0;
@@ -216,6 +295,8 @@ static int mpu6050_init(void)
 
 static void mpu6050_exit(void)
 {
+	kthread_stop(hthr);
+
 	if (attr_class) {
 		int i;
 
