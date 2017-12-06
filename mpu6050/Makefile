@@ -5,7 +5,7 @@ ifneq ($(KERNELRELEASE),)
 
 obj-m += mpu6050.o
 obj-m += mpu6050_dev.o
-#obj-m += mpu6050_test.o
+obj-m += mpu6050_dev_2.o
 else
 
 
