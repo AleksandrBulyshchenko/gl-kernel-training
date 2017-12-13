@@ -10,38 +10,14 @@
 
 #include <math.h>
 #include <unistd.h>
+#include "graph.h"
 
-typedef unsigned char	u8;
-typedef unsigned short	u16;
+lcd_type lcd;
 
-#define SSD1306_WIDTH	128
-#define SSD1306_HEIGHT	64
+u8 ssd1306_Buffer[SSD1306_WIDTH * SSD1306_HEIGHT / 8];
 
-typedef struct{
-	u16		X;
-	u16		Y;
-}_Point;
-
-typedef enum {
-		SSD1306_COLOR_BLACK = 0x00,   /*!< Black color, no pixel */
-		SSD1306_COLOR_WHITE = 0x01	  /*!< Pixel is set. Color depends on LCD */
-} ssd1306_COLOR_t;
-
-typedef struct {
-	struct fb_var_screeninfo vinfo;
-	struct fb_fix_screeninfo finfo;
-	int width;
-	int height;
-	long int screensize;
-	char *fbp;
-
-}lcd_type;
-
-static lcd_type lcd;
-
-static u8 ssd1306_Buffer[SSD1306_WIDTH * SSD1306_HEIGHT / 8];
-
-static int ssd1306_DrawPixel(u16 x, u16 y, ssd1306_COLOR_t color) {
+int ssd1306_DrawPixel(u16 x, u16 y, ssd1306_COLOR_t color) 
+{
 
 	if ( x > SSD1306_WIDTH || y > SSD1306_HEIGHT ) {
 		return -1;
@@ -58,12 +34,13 @@ static int ssd1306_DrawPixel(u16 x, u16 y, ssd1306_COLOR_t color) {
 	return 0;
 }
 
-static void Graphic_setPoint(const u16 X, const u16 Y)
+void Graphic_setPoint(const u16 X, const u16 Y)
 {
 	ssd1306_DrawPixel(X, Y, SSD1306_COLOR_WHITE);
 }
 
-static void Graphic_drawLine(_Point p1, _Point p2){
+void Graphic_drawLine(_Point p1, _Point p2)
+{
 	int dx, dy, inx, iny, e;
 	u16 x1 = p1.X, x2 = p2.X;
 	u16 y1 = p1.Y, y2 = p2.Y;
@@ -107,7 +84,8 @@ static void Graphic_drawLine(_Point p1, _Point p2){
 	Graphic_setPoint(x1, y1);
 }
 // ---------------------------------------------------------------------------
-static void Graphic_drawLine_(u16 x1, u16 y1, u16 x2, u16 y2){
+void Graphic_drawLine_(u16 x1, u16 y1, u16 x2, u16 y2)
+{
 	_Point p1 = {0}, p2 = {0};
 	p1.X = x1;
 	p1.Y = y1;
@@ -117,7 +95,8 @@ static void Graphic_drawLine_(u16 x1, u16 y1, u16 x2, u16 y2){
 	Graphic_drawLine(p1, p2);
 }
 // ---------------------------------------------------------------------------
-void Graphic_drawCircle(_Point center, u16 r){
+void Graphic_drawCircle(_Point center, u16 r)
+{
 	int  draw_x0, draw_y0;			//draw points
 	int  draw_x1, draw_y1;
 	int  draw_x2, draw_y5;
@@ -207,11 +186,11 @@ void Graphic_drawCircle(_Point center, u16 r){
 	}
 }
 
-static void Graphic_ClearScreen(void){
+void Graphic_ClearScreen(void){
 	memset(ssd1306_Buffer, 0, sizeof(ssd1306_Buffer));
 }
 
-static void Graphic_UpdateScreen(void){
+void Graphic_UpdateScreen(void){
 
 	int i = 0;
 
@@ -307,55 +286,3 @@ void fb_cleanup(void) {
 	close(fb);
 }
 
-int main(int argc, char **argv)
-{	
-	int x = 0, y = 0, i = 0;
-	long int location = 0;
-	
-	_Point center;
-	int radius = 0;
-	float angle = 0.0;
-	float angle2 = 0.0;
-
-	if (!fb_init("/dev/fb0"))
-		exit(1);
-
-	Graphic_ClearScreen();
-
-	center.X	= lcd.width / 2;
-	center.Y	= lcd.height / 2;
-	radius		= 31;
-	Graphic_drawCircle(center, radius);
-
-	angle = 0.0;
-
-	//for(angle = 0.0; angle <= 360; ){
-	for(angle = 0.0; ; ){
-
-		Graphic_ClearScreen();
-		Graphic_drawCircle(center, radius);
-
-		for(angle2 = 0.0; angle2 <= 360; ){
-			Graphic_drawLine_(
-				center.X + (radius -4) * cos((M_PI/180.0)*angle2 - M_PI/2),
-				center.Y + (radius -4) * sin((M_PI/180.0)*angle2 - M_PI/2),
-
-				center.X + radius * cos((M_PI/180.0)*angle2 - M_PI/2),
-				center.Y + radius * sin((M_PI/180.0)*angle2 - M_PI/2));
-				
-				angle2 += 90.0;
-		}
-
-		Graphic_drawLine_(center.X, center.Y, 
-				center.X + (radius -4) * cos((M_PI/180.0)*angle - M_PI/2),
-				center.Y + (radius -4) * sin((M_PI/180.0)*angle - M_PI/2));
-		angle += 6.0;
-		Graphic_UpdateScreen();
-		sleep(1);
-	}
-
-	Graphic_UpdateScreen();
-
-	fb_cleanup();
-	return(0);
-}
