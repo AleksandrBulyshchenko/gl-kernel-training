@@ -4,6 +4,7 @@
 ifneq ($(KERNELRELEASE),)
 
 obj-m := mpu6050.o
+mpu6050-objs := mpu6050_main.o mpu6050_cdev.o mpu6050_data.o
 
 else
 
