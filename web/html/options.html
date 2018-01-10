@@ -1,0 +1,43 @@
+<div class="container">
+
+    <div class="form-signin" >
+        <h2 class="form-signin-heading">Settings</h2>
+
+        <div class="input-group">
+            <span class="input-group-addon"> Quantity of cycles of asking words</span>
+            <input type="number" class="form-control" ng-model="num1" maxlength="2">
+        </div>
+        <br>
+        <div class="input-group">
+            <input type="number" class="form-control" ng-model="num2" maxlength="2"
+                   >
+            <span class="input-group-addon"> Quantity of cycle of asking meaning</span>
+        </div>
+        <br>
+        <div class="input-group">
+            <span class="input-group-addon"> Quantity of cycle of typing words</span>
+            <input type="number" class="form-control" ng-model="num3" maxlength="2">
+        </div>
+        <br>
+        <div class="input-group">
+
+            <input type="number" class="form-control" ng-model="lessons" maxlength="2">
+            <span class="input-group-addon">Number of words in a lesson </span>
+        </div>
+        <br>
+
+
+        <div class="input-group">
+
+           
+            <span class="input-group-addon">{{voice}} </span>
+        </div>
+        <select  ng-model="voice" class="form-control" >                    
+            <option ng-repeat="item in voices" ng-value="item.name" > {{item.name}} </option>
+        </select><br>
+
+
+        <button class="btn btn-lg btn-primary btn-block" ng-click="save()" >Save</button>
+    </div>
+
+</div> <!-- /container -->
