@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html ng-app="verbs">
+    <head>
+        <meta charset="utf-8">
+        <title>MPU6050</title>
+        <link href="css/app.css" rel="stylesheet" type="text/css"/>
+        <link href="css/signin.css" rel="stylesheet" type="text/css"/>
+        <link rel="stylesheet" href="css/bootstrap.min.css">
+    </head>
+    <body>
+        <div class="container">
+
+            <div class="form-signin" >
+                <h2 class="form-signin-heading">MPU6050</h2>
+                <div class="input-group">
+                    <span class="input-group-addon">Temperature</span>
+                    <input type="number" class="form-control" id = "temp" >
+                </div>
+                <br>
+
+                <div class="input-group">           
+                    <span class="input-group-addon">Accel_X</span>
+                    <input type="number" class="form-control" id = "ax" >
+                </div>
+                <br>
+                <div class="input-group">
+                    <span class="input-group-addon"> Accel_Y</span>
+                    <input type="number" class="form-control" id = "ay" >
+                </div>
+                <br>
+                <div class="input-group">
+                    <span class="input-group-addon">Accel_Z</span>
+                    <input type="number" class="form-control" id = "az">
+
+                </div>
+                <br>
+                <div class="input-group">
+                    <input type="number" class="form-control" id = "gx" >
+                    <span class="input-group-addon">GYRO_X</span>
+                </div>
+                <br>
+                <div class="input-group">
+                    <input type="number" class="form-control" id = "gy">
+                    <span class="input-group-addon">GERO_Y</span>
+                </div>
+                <br>
+                <div class="input-group">
+                    <input type="number" class="form-control" id = "gz" >
+                    <span class="input-group-addon">GYRO_Z</span>
+                </div>
+                <br>  
+                <div class="input-group">
+                    <input onchange="text(this.value)"  class="form-control" id = "post" >
+                    <span  class="input-group-addon" onclick="clean()">CLEAR</span>
+                </div>
+                <br>  
+                <div class="input-group">           
+                    <canvas id="canvas" width="128" height="64" style=" outline: 2px solid #000;
+                            border: 3px solid #fff; " ></canvas>
+                </div>
+            </div>
+        </div> <!-- /container -->
+
+        <script>
+		
+            var canvas, context, tool;
+
+            function init() {
+                canvas = document.getElementById('canvas');
+                context = canvas.getContext('2d');
+
+                context.fillStyle = "white";
+                context.fillRect(0, 0, 128, 64);
+                context.fillStyle = "black";
+				
+                tool = new tool_pencil();
+                canvas.addEventListener('mousedown', ev_canvas, false);
+                canvas.addEventListener('mousemove', ev_canvas, false);
+                canvas.addEventListener('mouseup', ev_canvas, false);
+            }
+
+            function tool_pencil() {
+                var tool = this;
+                this.started = false;
+				
+                this.mousedown = function (ev) {
+                    context.beginPath();
+                    context.moveTo(ev._x, ev._y);
+                    tool.started = true;
+                };
+
+                this.mousemove = function (ev) {
+                    if (tool.started) {
+                        context.lineTo(ev._x, ev._y);
+                        context.stroke();
+                    }
+                };
+                
+                this.mouseup = function (ev) {
+                    if (tool.started) {
+                        tool.mousemove(ev);
+                        tool.started = false;
+                    }
+                };
+            }
+
+            function ev_canvas(ev) {
+                ev._x = ev.offsetX;
+                ev._y = ev.offsetY;
+
+                var func = tool[ev.type];
+                if (func) {
+                    func(ev);
+                }
+            }
+
+            function text(text) {
+                context.fillStyle = "black";
+                context.font = '20px serif';
+                context.fillText(text, 0, 20);
+            }
+
+            function clean() {
+                context.fillStyle = "white";
+                context.fillRect(0, 0, 128, 64);
+            }
+
+            function check(dot) {
+                if (dot === 255) {
+                    return 0;
+                }
+                return 1;
+            }
+
+            function load() {
+                var xhr = new XMLHttpRequest();
+                var pixel = context.getImageData(0, 0, 128, 64);
+                var data = pixel.data;
+                var src = [];
+                //console.log(data);
+                var dots = 0;
+                for (var i = 0; i < pixel.data.length; ) {
+                    dots = check(data[i]);
+                    i += 4;
+                    dots += check(data[i]) << 1;
+                    i += 4;
+                    dots += check(data[i]) << 2;
+                    i += 4;
+                    dots += check(data[i]) << 3;
+                    i += 4;
+                    dots += check(data[i]) << 4;
+                    i += 4;
+                    dots += check(data[i]) << 5;
+                    i += 4;
+                    dots += check(data[i]) << 6;
+                    i += 4;
+                    dots += check(data[i]) << 7;
+                    i += 4;
+                    src.push(dots);
+                }
+                // console.log(JSON.stringify(src));
+                xhr.open('POST', 'mpu6050', true);
+                //xhr.send(document.getElementById("post").value);
+                xhr.send(JSON.stringify(src));
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState != 4)
+                        return;
+
+                    if (xhr.status != 200) {                        
+                        console.log('ER ' + xhr.status + ': ' + xhr.statusText);
+                        return;
+                    }
+
+                    var str = xhr.responseText;
+                    var answer = JSON.parse(xhr.responseText);
+                    //console.log(answer);
+                    for (var i in answer) {
+                        var elem = document.getElementById(i);
+                        elem.value = answer[i];
+                    }
+                }
+            }
+
+			init();
+            setInterval(load, 500);
+        </script>
+    </body>
+</html>
+

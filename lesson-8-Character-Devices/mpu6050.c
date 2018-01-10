@@ -10,6 +10,7 @@
 #include <asm/uaccess.h>
 #include <linux/kthread.h>
 #include <linux/delay.h>
+#include <linux/fs.h>
 
 #define BUF_SIZE  10
 
@@ -191,8 +192,13 @@ static struct cdev hcdev;
 static struct cdev hcdev1;
 static struct class *devclass;
 
-int thread_func(void *a) {
+static struct file *f;
+#define SCREEN_NAME "/dev/tty0"
 
+int thread_func(void *a) {
+	ssize_t n = 0;
+	loff_t offset = 0;
+	char b[100]="hi how are you?\n";
 	while (true) {
 		if (++number >= BUF_SIZE) {
 			number = 0;
@@ -202,6 +208,24 @@ int thread_func(void *a) {
 			do_exit(0);
 		}
 		mpu6050_read_data(&g_mpu6050_data[number]);
+
+		sprintf(b, "\r\ntemperature=%d\r\ngyroX=%d\r\ngyroY=%d\r\ngyroZ=%d\r\naccX=%d\r\naccY=%d\r\naccZ =%d\r\n",
+		 
+				g_mpu6050_data[number].temperature,
+				g_mpu6050_data[number].gyro_values[0],
+				g_mpu6050_data[number].gyro_values[1],
+				g_mpu6050_data[number].gyro_values[2],
+				g_mpu6050_data[number].accel_values[0],
+				g_mpu6050_data[number].accel_values[1],
+				g_mpu6050_data[number].accel_values[2]);
+ 		f = filp_open( SCREEN_NAME, O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR ); 		
+ 		if( IS_ERR( f ) ) { 
+			printk( "! file open failed: %s\n", SCREEN_NAME );
+		}
+		if( ( n = vfs_write( f, b, strlen( b ), &offset ) ) != strlen( b ) ) {
+			printk( "! failed to write: %d\n", n );
+		}
+		filp_close( f, NULL );
 	}
 
 	return 0;

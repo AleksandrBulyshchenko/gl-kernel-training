@@ -1,0 +1,44 @@
+
+
+<div class="container" ng-if="!typing"">
+
+    <div ng-if="result" class="form-signin" ng-class="wallpaper">
+	<button type="button" class="btn btn-lg btn-primary" disabled="disabled" >  {{counter}}</button>
+        <h2  class="form-signin-heading" ng-class="wallpaper">{{task}}</h2> 
+
+        <div ng-repeat="item in answers" >
+            <button class=" btn-lg btn-primary btn-block" ng-click="check(item)"> {{item}}</button>
+            <br>
+        </div>
+    </div>
+
+    <div ng-if="!result" class="form-signin" ng-class="wallpaper" >
+        <h2  class="form-signin-heading" >You might have learned something.</h2> 
+        <button class="btn btn-lg btn-primary btn-block" ui-sref="home" >Inception</button>
+        
+    </div>
+</div>
+
+
+
+
+<div class="form-signin" ng-if="typing" ng-class="wallpaper">
+    <button type="button" class="btn btn-lg btn-primary" disabled="disabled" >  {{counter}}</button>
+    <form>
+        <h2  class="form-signin-heading" ng-class="wallpaper">  {{answers[0]}}</h2>
+        <input   ng-keyup="checkLetter($event)" ng-model="answers[1]" class="form-control" focus-me   />
+        if you don't know push  Control - Shift - J
+    </form>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
