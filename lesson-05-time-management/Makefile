@@ -4,8 +4,10 @@
 
 ifneq ($(KERNELRELEASE),)
 
-obj-m += xxx.o
-obj-m += xxx_dynamic.o
+obj-m += xxx_1.o
+obj-m += xxx_2.o
+obj-m += xxx_timer.o
+obj-m += xxx_hrtimer.o
 
 else
 
