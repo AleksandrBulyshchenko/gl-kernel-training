@@ -2,12 +2,8 @@
 # mpu6050 accelerometer & gyroscope
 #
 ifneq ($(KERNELRELEASE),)
-
 obj-m := mpu6050.o
-
 else
-
-
 ifeq ($(KERNELDIR),)
 ifeq ($(BBB_KERNEL),)
 	$(error Path to kernel tree - KERNELDIR or BBB_KERNEL variable is not defined!)
@@ -16,14 +12,16 @@ endif
 
 KERNELDIR ?= $(BBB_KERNEL)
 
-export ARCH = arm
+export ARCH ?= arm
 export CROSS_COMPILE ?= arm-linux-gnueabihf-
 
+.PHONY: all clean dtb modules clean_objects
 
-.PHONY: all clean dtb
+all: modules dtb
 
-all:
+modules:
 	$(MAKE) -C $(KERNELDIR) M=$(CURDIR) modules
+	make clean_objects
 
 clean:
 	$(MAKE) -C $(KERNELDIR) M=$(CURDIR) clean
@@ -32,5 +30,7 @@ dtb:
 	cp am335x-bone-common.dtsi $(KERNELDIR)/arch/arm/boot/dts/
 	$(MAKE) -C $(KERNELDIR) M=$(CURDIR) dtbs
 
+clean_objects:
+	rm -rf *.o *.*.o .*.cmd Module.* *.order .tmp_versions
 
 endif
